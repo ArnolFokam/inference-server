@@ -1,6 +1,6 @@
 # inference-server
 
-An inference server, built from scratch. Practice for the Boltz technical interview on Mon 26 Oct 2026.
+An inference server for tiny LLMs, built from scratch: model loading, tokenization, KV-cached generation, and an HTTP API, with minimal dependencies.
 
 ## Setup
 
