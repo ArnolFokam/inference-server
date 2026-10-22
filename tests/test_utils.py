@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from inference.utils import stable_softmax
+from inference.utils import apply_temperature, stable_softmax
 
 
 def test_rows_sum_to_one(rng):
@@ -11,7 +11,7 @@ def test_rows_sum_to_one(rng):
     np.testing.assert_allclose(probs.sum(axis=-1), 1.0)
 
 
-def test_logits_do_not_overflow(rng):
+def test_logits_do_not_overflow():
     """Extreme float32 logits give finite probabilities that still sum to 1."""
     large = np.finfo(np.float32).max / 2
 
@@ -35,3 +35,11 @@ def test_shift_invariant(rng, c):
     x = rng.random((4, 5, 6))
     x_plus_c = x + c
     np.testing.assert_allclose(stable_softmax(x), stable_softmax(x_plus_c))
+
+
+def test_apply_temperature(rng):
+    """Non-positive temperatures leave logits unchanged; large positive ones rescale them."""
+    logits = rng.random((4, 5, 6))
+    np.testing.assert_almost_equal(apply_temperature(logits, -np.finfo(np.float32).max), logits)
+    np.testing.assert_almost_equal(apply_temperature(logits, 0), logits)
+    assert not np.allclose(apply_temperature(logits, np.finfo(np.float32).max), logits)
