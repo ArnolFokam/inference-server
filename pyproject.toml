@@ -7,7 +7,7 @@ name = "inference-server"
 version = "0.1.0"
 description = "A small inference server, built from scratch"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = ["numpy>=2.0"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
