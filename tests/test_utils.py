@@ -68,3 +68,10 @@ def test_top_k_filter_k_at_least_vocab_size_is_noop(rng, k):
     logits = rng.random((4, 10))
     np.testing.assert_array_equal(top_k_filter(logits, k), logits)
 
+
+def test_top_k_filter_keeps_all_values_tied_at_threshold():
+    """Values tied with the k-th largest logit are all kept, even if that exceeds k."""
+    logits = np.array([2.0, 2.0, 1.0, 2.0])
+    out = top_k_filter(logits, 2)
+    np.testing.assert_array_equal(out, [2.0, 2.0, -np.inf, 2.0])
+

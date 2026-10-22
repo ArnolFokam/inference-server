@@ -31,6 +31,6 @@ def top_k_filter(logits: np.ndarray, k: int) -> np.ndarray:
     if k >= logits.shape[-1]:
         return logits
 
-    idx = np.argsort(logits, axis=-1)[..., :-k]
-    np.put_along_axis(logits, idx, -np.inf, axis=-1)
+    kth_largest = np.partition(logits, -k, axis=-1)[..., [-k]]
+    logits = np.where(logits >= kth_largest, logits, -np.inf)
     return logits
