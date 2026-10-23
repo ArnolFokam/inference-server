@@ -56,3 +56,8 @@ def top_p_filter(logits: np.ndarray, p: float) -> np.ndarray:
     keep = np.zeros_like(sorted_keep)
     np.put_along_axis(keep, sorted_idx, sorted_keep, axis=-1)
     return np.where(keep, logits, -np.inf)
+
+
+def sample_from_probs(probs: np.ndarray, rng: np.random.Generator) -> int:
+    """Draw one token id from the categorical distribution probs of shape (V,)."""
+    return int(rng.choice(len(probs), p=probs))
