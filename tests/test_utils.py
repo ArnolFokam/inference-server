@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from inference.utils import apply_temperature, stable_softmax, top_k_filter
+from inference.utils import apply_temperature, stable_softmax, top_k_filter, top_p_filter
 
 
 def test_rows_sum_to_one(rng):
@@ -75,3 +75,36 @@ def test_top_k_filter_keeps_all_values_tied_at_threshold():
     out = top_k_filter(logits, 2)
     np.testing.assert_array_equal(out, [2.0, 2.0, -np.inf, 2.0])
 
+
+
+def test_top_p_filter_1d_keeps_smallest_set_reaching_p_in_original_order():
+    """On an unsorted 1D input, the smallest set with mass >= p survives in place."""
+    logits = np.log(np.array([0.15, 0.5, 0.05, 0.3]))
+    out = top_p_filter(logits, 0.75)
+    np.testing.assert_array_equal(out, [-np.inf, logits[1], -np.inf, logits[3]])
+
+
+def test_top_p_filter_always_keeps_top_token_when_p_is_tiny():
+    """When the top token alone already exceeds p, only that token is kept."""
+    logits = np.log(np.array([0.05, 0.15, 0.5, 0.3]))
+    out = top_p_filter(logits, 0.01)
+    np.testing.assert_array_equal(out, [-np.inf, -np.inf, logits[2], -np.inf])
+
+
+def test_top_p_filter_p_one_keeps_everything():
+    """With p == 1 no token is masked, despite floating-point error in the cumsum."""
+    logits = np.log(np.array([0.5, 0.3, 0.15, 0.05]))
+    np.testing.assert_array_equal(top_p_filter(logits, 1.0), logits)
+
+
+def test_top_p_filter_2d_filters_each_row_independently():
+    """On a 2D input, each row reaches p with its own number of tokens."""
+    logits = np.log(np.array([[0.9, 0.05, 0.03, 0.02], [0.4, 0.3, 0.2, 0.1]]))
+    out = top_p_filter(logits, 0.8)
+    expected = np.array(
+        [
+            [logits[0, 0], -np.inf, -np.inf, -np.inf],
+            [logits[1, 0], logits[1, 1], logits[1, 2], -np.inf],
+        ]
+    )
+    np.testing.assert_array_equal(out, expected)

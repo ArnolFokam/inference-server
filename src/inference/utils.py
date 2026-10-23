@@ -34,3 +34,25 @@ def top_k_filter(logits: np.ndarray, k: int) -> np.ndarray:
     kth_largest = np.partition(logits, -k, axis=-1)[..., [-k]]
     logits = np.where(logits >= kth_largest, logits, -np.inf)
     return logits
+
+
+def top_p_filter(logits: np.ndarray, p: float) -> np.ndarray:
+    """Nucleus filter: keep the smallest set of tokens whose probability mass is >= p.
+
+    Accepts shape (V,) or (B, V) and filters along the last axis. Tokens are
+    ranked by probability (highest first); the smallest prefix whose cumulative
+    probability reaches p is kept and every other entry is set to -inf. Kept
+    entries retain their original logit values. p is in (0, 1]; p == 1 keeps
+    everything, and the top token is always kept.
+    """
+    probs = stable_softmax(logits)
+    sorted_idx = np.argsort(-probs, axis=-1, kind="stable")
+    sorted_probs = np.take_along_axis(probs, sorted_idx, axis=-1)
+
+    # Keep a token while the mass ranked above it is still below p.
+    mass_before = np.cumsum(sorted_probs, axis=-1) - sorted_probs
+    sorted_keep = mass_before < p
+
+    keep = np.zeros_like(sorted_keep)
+    np.put_along_axis(keep, sorted_idx, sorted_keep, axis=-1)
+    return np.where(keep, logits, -np.inf)
