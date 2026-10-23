@@ -13,15 +13,16 @@ from inference.model import (
 
 
 @pytest.fixture
-def params() -> dict[str, np.ndarray]:
+def params() -> dict:
     """Tiny model with V=3, D=2: identity Q/K/O, Wv doubles, W_out = [h0, h1, h0+h1]."""
     return {
-        "E": np.array([[1.0, 0.0], [0.0, 1.0], [1.0, 1.0]]),
+        "embedding": np.array([[1.0, 0.0], [0.0, 1.0], [1.0, 1.0]]),
         "Wq": np.eye(2),
         "Wk": np.eye(2),
         "Wv": 2.0 * np.eye(2),
         "Wo": np.eye(2),
         "W_out": np.array([[1.0, 0.0, 1.0], [0.0, 1.0, 1.0]]),
+        "max_seq_len": 4,
     }
 
 
@@ -226,6 +227,12 @@ def test_model_prefill_fills_the_cache_with_projected_keys_and_values(params):
     assert cache["length"] == 2
     np.testing.assert_allclose(cache["K"][:2], [[1.0, 0.0], [0.0, 1.0]])
     np.testing.assert_allclose(cache["V"][:2], [[2.0, 0.0], [0.0, 2.0]])
+
+
+def test_model_prefill_sizes_the_cache_from_max_seq_len(params):
+    """The returned cache has room for params["max_seq_len"] positions."""
+    _, cache = model_prefill(np.array([0, 1]), params)
+    assert cache["K"].shape == cache["V"].shape == (4, 2)
 
 
 # model_decode_step

@@ -4,8 +4,8 @@ from inference.utils import stable_softmax
 
 # KV cache: {"K": (max_seq_len, d_model), "V": (max_seq_len, d_model), "length": int}
 KVCache = dict
-# Model weights: E, Wq, Wk, Wv, Wo, W_out
-Params = dict[str, np.ndarray]
+# Model params: embedding, Wq, Wk, Wv, Wo, W_out (arrays) and max_seq_len (int)
+Params = dict
 
 
 def embed_tokens(token_ids: np.ndarray, embedding_matrix: np.ndarray) -> np.ndarray:
@@ -94,11 +94,18 @@ def model_prefill(token_ids: np.ndarray, params: Params) -> tuple[np.ndarray, KV
     projects its output with Wo, and projects the LAST position through W_out.
     Returns (logits, cache), with logits of shape (V,).
     """
-    # TODO: decide the cache's max_seq_len (the spec does not say where it comes from).
-    # TODO: embed, project to Q/K/V, and fill the cache with append_kv.
-    # TODO: causal attention, then the Wo projection.
-    # TODO: project only the last position through W_out.
-    raise NotImplementedError
+    x = embed_tokens(token_ids, params["embedding"])
+    q = linear_projection(x, params["Wq"])
+    k = linear_projection(x, params["Wk"])
+    v = linear_projection(x, params["Wv"])
+
+    cache = init_kv_cache(params["max_seq_len"], d_model=k.shape[-1])
+    append_kv(cache, k, v)
+
+    length = cache["length"]
+    attn = causal_attention(q, cache["K"][:length], cache["V"][:length])
+    hidden = linear_projection(attn, params["Wo"])
+    return linear_projection(hidden[-1], params["W_out"]), cache
 
 
 def model_decode_step(
@@ -110,7 +117,14 @@ def model_decode_step(
     row to the cache in place, attends over every stored entry, and projects the
     result to next-token logits. Returns (logits, cache), with logits of shape (V,).
     """
-    # TODO: embed the token and project it to Q/K/V (one row each).
-    # TODO: append the new K/V row, then attend over the cache's filled positions only.
-    # TODO: project through Wo and W_out to get the logits.
-    raise NotImplementedError
+    x = embed_tokens(np.array([token_id]), params["embedding"])
+    q = linear_projection(x, params["Wq"])
+    k = linear_projection(x, params["Wk"])
+    v = linear_projection(x, params["Wv"])
+
+    append_kv(cache, k, v)
+
+    length = cache["length"]
+    attn = causal_attention(q, cache["K"][:length], cache["V"][:length])
+    hidden = linear_projection(attn, params["Wo"])
+    return linear_projection(hidden[-1], params["W_out"]), cache
