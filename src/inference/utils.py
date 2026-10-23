@@ -61,3 +61,11 @@ def top_p_filter(logits: np.ndarray, p: float) -> np.ndarray:
 def sample_from_probs(probs: np.ndarray, rng: np.random.Generator) -> int:
     """Draw one token id from the categorical distribution probs of shape (V,)."""
     return int(rng.choice(len(probs), p=probs))
+
+
+def greedy_select(logits: np.ndarray) -> np.ndarray:
+    """Return the index of the largest logit along the last axis.
+
+    Accepts shape (V,) or (B, V). Ties resolve to the lowest index.
+    """
+    return np.argmax(logits, axis=-1)
